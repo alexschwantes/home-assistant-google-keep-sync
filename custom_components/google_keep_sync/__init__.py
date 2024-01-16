@@ -59,9 +59,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
                     _LOGGER.debug("found new list item: %s", list2_item["summary"])
                     list_prefix = entry.data.get("list_prefix", "")
                     data = {
-                        "item_name": list2_item.summary,
-                        "item_id": list2_item.item_id,
-                        "item_checked": list2_item.checked,
+                        "item_name": list2_item["summary"],
+                        "item_id": list2_item_id,
+                        "item_checked": list2_item["checked"],
                         "list_name": (f"{list_prefix} " if list_prefix else "")
                         + list2["name"],
                         "list_id": list2_id,
