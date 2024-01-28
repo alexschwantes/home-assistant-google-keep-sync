@@ -40,31 +40,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
             todo_lists[glist.id] = {"name": glist.title, "items": items}
         return todo_lists
 
-    async def _check_gkeep_lists_changes(todo_lists1, todo_lists2) -> None:
-        """Compare todo_lists1 and todo_lists2 lists.
+    async def _check_gkeep_lists_changes(original_lists, updated_lists) -> None:
+        """Compare original_lists and updated_lists lists.
 
         Report on any new TodoItem's that have been added to any
-        lists in todo_lists2 that are not in todo_lists1.
+        lists in updated_lists that are not in original_lists.
         """
         # for each list
-        for list2_id, list2 in todo_lists2.items():
-            if list2_id not in todo_lists1:
-                _LOGGER.debug("found new list not in original: %s", list2["name"])
+        for upldated_list_id, upldated_list in updated_lists.items():
+            if upldated_list_id not in original_lists:
+                _LOGGER.debug(
+                    "found new list not in original: %s", upldated_list["name"]
+                )
                 continue
 
             # for each todo item in the list
-            for list2_item_id, list2_item in list2["items"].items():
+            for upldated_list_item_id, upldated_list_item in upldated_list[
+                "items"
+            ].items():
                 # if todo is not in original list, then it is new
-                if list2_item_id not in todo_lists1[list2_id]["items"]:
-                    _LOGGER.debug("found new list item: %s", list2_item["summary"])
+                if (
+                    upldated_list_item_id
+                    not in original_lists[upldated_list_id]["items"]
+                ):
+                    _LOGGER.debug(
+                        "found new list item: %s", upldated_list_item["summary"]
+                    )
                     list_prefix = entry.data.get("list_prefix", "")
                     data = {
-                        "item_name": list2_item["summary"],
-                        "item_id": list2_item_id,
-                        "item_checked": list2_item["checked"],
+                        "item_name": upldated_list_item["summary"],
+                        "item_id": upldated_list_item_id,
+                        "item_checked": upldated_list_item["checked"],
                         "list_name": (f"{list_prefix} " if list_prefix else "")
-                        + list2["name"],
-                        "list_id": list2_id,
+                        + upldated_list["name"],
+                        "list_id": upldated_list_id,
                     }
 
                     _LOGGER.debug("New TodoItem: %s", data)
@@ -75,14 +84,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         """Fetch data from API."""
         try:
             # save lists prior to syncing
-            todo_lists1 = await _parse_gkeep_data_dict()
+            original_lists = await _parse_gkeep_data_dict()
             # Directly call the async_sync_data method
             lists_to_sync = entry.data.get("lists_to_sync", [])
             result = await api.async_sync_data(lists_to_sync)
             # save lists after syncing
-            todo_lists2 = await _parse_gkeep_data_dict()
+            updated_lists = await _parse_gkeep_data_dict()
             # compare both list for changes
-            await _check_gkeep_lists_changes(todo_lists1, todo_lists2)
+            await _check_gkeep_lists_changes(original_lists, updated_lists)
 
             return result
         except Exception as error:
