@@ -27,15 +27,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         _LOGGER.error("Failed to authenticate Google Keep API")
         return False  # Exit early if authentication fails
 
-    async def _parse_gkeep_data_dict():
-        """Parse gkeep api data to dictionaries."""
+    async def _parse_gkeep_data_dict() -> dict[str, dict[str, dict[str, str]]]:
+        """Parse unchecked gkeep api data to a dictionary."""
         todo_lists = {}
 
         # for glist in gkeep_lists:
         for glist in coordinator.data or []:
+            # get all the unchecked items only
             items = {
                 item.id: {"summary": item.text, "checked": item.checked}
                 for item in glist.items
+                if not item.checked
             }
             todo_lists[glist.id] = {"name": glist.title, "items": items}
         return todo_lists
@@ -50,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         for upldated_list_id, upldated_list in updated_lists.items():
             if upldated_list_id not in original_lists:
                 _LOGGER.debug(
-                    "found new list not in original: %s", upldated_list["name"]
+                    "Found new list not in original: %s", upldated_list["name"]
                 )
                 continue
 
@@ -63,9 +65,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
                     upldated_list_item_id
                     not in original_lists[upldated_list_id]["items"]
                 ):
-                    _LOGGER.debug(
-                        "found new list item: %s", upldated_list_item["summary"]
-                    )
                     list_prefix = entry.data.get("list_prefix", "")
                     data = {
                         "item_name": upldated_list_item["summary"],
@@ -76,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
                         "list_id": upldated_list_id,
                     }
 
-                    _LOGGER.debug("New TodoItem: %s", data)
+                    _LOGGER.debug("Found new TodoItem: %s", data)
                     hass.bus.async_fire("google_keep_sync_new_item", data)
 
     # Define the update method for the coordinator
